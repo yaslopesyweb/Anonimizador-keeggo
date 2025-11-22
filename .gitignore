@@ -1,0 +1,43 @@
+# ambientes virtuais
+venv/
+.venv/
+env/
+ENV/
+__pypackages__/
+
+# arquivos do venv
+pyvenv.cfg
+
+# variáveis de ambiente locais
+.env
+
+# caches e artefatos
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.mypy_cache/
+.pytest_cache/
+
+# pacotes / build
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# IDEs
+.vscode/
+.idea/
+
+# notebooks
+.ipynb_checkpoints/
+
+# logs / temporários
+*.log
+*.tmp
+*.swp
+
+# sistema
+.DS_Store
+Thumbs.db
