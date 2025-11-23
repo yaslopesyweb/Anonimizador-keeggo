@@ -126,7 +126,7 @@ st.markdown(
             content: "";
             position: absolute;
             top: 10px;
-            left: 50px; /* movido um pouco para a direita para não colidir com o botão do sidebar */
+            left: 50px; 
             width: 160px;
             height: 50px;
             background-image: url("data:image/png;base64,{logo_header_base64 or ''}");
@@ -136,7 +136,6 @@ st.markdown(
             z-index: 9999;
         }}
 
-        /* ALERTA de sucesso customizado (Keeggo) */
         .stAlert {{
             border-radius: 6px !important;
             padding: 10px 14px !important;
@@ -148,7 +147,7 @@ st.markdown(
             border: 1px solid {primary_dark} !important;
         }}
 
-        /* HISTÓRICO no SIDEBAR (estilo ChatGPT-like) */
+        /* HISTÓRICO no SIDEBAR */
         .sidebar-history-title {{
             color: {primary_light};
             font-size: 16px;
@@ -273,7 +272,7 @@ if st.sidebar.button("Limpar histórico", key="clear_hist"):
 # ---------------------------------------------------------
 st.markdown(
     f"""
-    <div style='margin-left: 220px; margin-top: -60px;'>
+    <div style='margin-left: 5px; margin-top: -60px;'>
         <h1 style='color:{primary_light}; margin:0;'>Anonimizador Local</h1>
         <div style='color:{light_gray};'>Ferramenta interna para uso dos colaboradores Keeggo. Processamento 100% local.</div>
     </div>
@@ -303,31 +302,34 @@ nlp = load_model("pt_core_news_lg")
 # ---------------------------------------------------------
 def detect_persons(nlp, text):
     doc = nlp(text)
+
+    # nomes detectados como entidade
     spacy_names = [ent.text for ent in doc.ents if ent.label_.upper() in ("PER", "PERSON")]
     spacy_names = list(OrderedDict.fromkeys(spacy_names))
-    fullnames = [n for n in spacy_names if len(n.split()) > 1]
-    firstnames_spacy = [n for n in spacy_names if len(n.split()) == 1]
-    dialog_name_regex = r"\b([A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõç]+)(?=\s*:)"
-    dialog_names = re.findall(dialog_name_regex, text)
-    firstnames = list(OrderedDict.fromkeys(firstnames_spacy + dialog_names))
-    final_names = OrderedDict()
-    for fn in firstnames:
-        matched = False
-        for fullname in fullnames:
-            if fn.lower() in fullname.lower().split():
-                final_names[fullname] = True
-                matched = True
-                break
-        if not matched:
-            final_names[fn] = True
-    for fn in fullnames:
-        final_names[fn] = True
-    people = list(final_names.keys())
+
+    all_variants = OrderedDict()
+
+    for name in spacy_names:
+        parts = name.split()
+
+        # Nome completo
+        if len(parts) > 1:
+            all_variants[name] = True
+            # Primeiro nome
+            all_variants[parts[0]] = True
+            # Último sobrenome
+            all_variants[parts[-1]] = True
+        else:
+            all_variants[name] = True
+
+    variants_list = list(all_variants.keys())
+
     spans = []
-    for p in people:
-        for match in re.finditer(rf"\b{re.escape(p)}\b", text):
-            spans.append((match.start(), match.end(), p))
-    return people, spans
+    for name in sorted(variants_list, key=lambda x: len(x), reverse=True):
+        for match in re.finditer(rf"\b{re.escape(name)}\b", text):
+            spans.append((match.start(), match.end(), name))
+
+    return variants_list, spans
 
 def normalize_name(name):
     name = "".join(
@@ -343,10 +345,14 @@ def normalize_name(name):
 # ANONIMIZADOR – EVITA REPETIÇÕES
 # ---------------------------------------------------------
 def anonymize_by_names(text, selected_names):
+    occurrences = []
     canonical = {}
     tag_counter = 1
-    occurrences = []
+
+    # ordenar maior para menor primeiro
     selected_sorted = sorted(selected_names, key=lambda x: len(x), reverse=True)
+
+    # reunir todas as ocorrências
     for name in selected_sorted:
         start = 0
         while True:
@@ -355,21 +361,47 @@ def anonymize_by_names(text, selected_names):
                 break
             occurrences.append((idx, idx + len(name), name))
             start = idx + len(name)
+
     occurrences.sort(key=lambda x: x[0])
+
     result = text
-    for s, e, name in reversed(occurrences):
-        canon = normalize_name(name)
+
+    for start, end, name in reversed(occurrences):
+        parts = name.split()
+
+        # montar chave canônica única
+        # usa nome completo se existir, senão o nome simples
+        if len(parts) > 1:
+            canon = normalize_name(" ".join(parts))
+        else:
+            canon = normalize_name(parts[0])
+
+        # garantir tag única para cada pessoa
         if canon not in canonical:
             canonical[canon] = f"<<PESSOA_{tag_counter}>>"
             tag_counter += 1
+
         tag = canonical[canon]
-        result = result[:s] + tag + result[e:]
+        result = result[:start] + tag + result[end:]
+
+    # gerar mapeamento final com nome completo preferido
     mapping = []
     for canon, tag in canonical.items():
+        best = None
         for name in selected_sorted:
             if normalize_name(name) == canon:
-                mapping.append((tag, name))
+                best = name
                 break
+
+        # fallback: primeiro nome semelhante
+        if not best:
+            for name in selected_sorted:
+                if normalize_name(name.split()[0]) in canon:
+                    best = name
+                    break
+
+        mapping.append((tag, best))
+
     return result, mapping
 
 # ---------------------------------------------------------
