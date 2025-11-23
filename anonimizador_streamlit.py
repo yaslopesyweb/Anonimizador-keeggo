@@ -141,11 +141,6 @@ st.markdown(
             padding: 10px 14px !important;
             font-weight: 600 !important;
         }}
-        .stAlert[data-testid="stStatusElement"] {{
-            background-color: {primary_light} !important;
-            color: #ffffff !important;
-            border: 1px solid {primary_dark} !important;
-        }}
 
         /* HISTÓRICO no SIDEBAR */
         .sidebar-history-title {{
@@ -213,6 +208,13 @@ st.markdown(
             background-color: #2b2b2b;
             border-radius: 4px;
         }}
+        div[data-testid="stAlert"] {{
+            background-color: #22B2A7 !important;  /* verde-claro Keeggo */
+            border: 1px solid #22B2A7  !important;  /* verde-claro Keeggo */
+            color: #ffffff !important;             /* texto branco */
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+}}
     </style>
     """,
     unsafe_allow_html=True
@@ -404,37 +406,91 @@ def anonymize_by_names(text, selected_names):
 
     return result, mapping
 
+def read_uploaded_file(uploaded_file):
+    filename = uploaded_file.name.lower()
+
+    # --------------------------
+    # TXT
+    # --------------------------
+    if filename.endswith(".txt"):
+        return uploaded_file.read().decode("utf-8", errors="ignore")
+
+    # --------------------------
+    # DOCX
+    # --------------------------
+    elif filename.endswith(".docx"):
+        import docx
+        document = docx.Document(uploaded_file)
+        full_text = []
+        for para in document.paragraphs:
+            full_text.append(para.text)
+        return "\n".join(full_text)
+
+    # --------------------------
+    # VTT (WebVTT - Teams)
+    # --------------------------
+    elif filename.endswith(".vtt"):
+        raw = uploaded_file.read().decode("utf-8", errors="ignore")
+        cleaned_lines = []
+        for line in raw.split("\n"):
+            line = line.strip()
+
+            if "-->" in line:
+                continue
+            if line.upper().startswith("WEBVTT"):
+                continue
+            if line.isdigit():
+                continue
+            if line:
+                cleaned_lines.append(line)
+
+        cleaned = "\n".join(cleaned_lines)
+
+        # se o VTT estiver vazio após limpeza, usa raw
+        return cleaned if cleaned.strip() else raw
+
+    # --------------------------
+    # Outros formatos não suportados
+    # --------------------------
+    else:
+        return None
+
 # ---------------------------------------------------------
-# INPUT
+# INPUT (corrigido para evitar apagar input_text)
 # ---------------------------------------------------------
 st.header("1) Envie ou cole a transcrição")
-uploaded = st.file_uploader("Arquivo .txt", type=["txt"])
 
-# Carregar via query params (clicou no histórico)
+uploaded = st.file_uploader(
+    "Envie arquivo (.txt, .docx, .vtt)", 
+    type=["txt", "docx", "vtt"]
+)
+
+# sempre inicialize sem sobrescrever depois
+input_text = None  
+
+# 1) Se veio do histórico → usar histórico
 params = st.query_params
-input_text = ""
-
 if "history" in params:
     hist_file = params["history"]
-    # streamlit pode retornar lista ou string
     if isinstance(hist_file, list):
         hist_file = hist_file[0]
 
     hist_path = os.path.join(HIST_DIR, hist_file)
+
     if os.path.exists(hist_path):
         with open(hist_path, "r", encoding="utf-8") as h:
             input_text = h.read()
         st.success(f"Histórico carregado: {hist_file}")
 
+# 2) Se não veio do histórico, mas foi feito upload → ler o arquivo
+elif uploaded:
+    input_text = read_uploaded_file(uploaded)
 
-# Se não veio via histórico, verificar upload ou textarea
-if not input_text:
-    if uploaded:
-        input_text = uploaded.read().decode("utf-8", errors="ignore")
-    else:
-        input_text = st.text_area("Ou cole aqui:", height=250)
+# 3) Se não veio upload nem histórico → usar textarea
+if input_text is None:
+    input_text = st.text_area("Ou cole aqui:", height=250)
 
-# Se não houver texto -> parar antes de detectar nomes
+# Se mesmo assim continuar vazio → parar
 if not input_text or not input_text.strip():
     st.stop()
 
