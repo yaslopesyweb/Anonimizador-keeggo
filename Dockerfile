@@ -12,6 +12,12 @@ RUN apt-get update \
        git \
        curl \
        wget \
+         libxml2-dev \
+         libxslt1-dev \
+         zlib1g-dev \
+         libffi-dev \
+         libssl-dev \
+         pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements e instalar
