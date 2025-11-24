@@ -561,4 +561,4 @@ if st.button("Anonimizar agora"):
 # ---------------------------------------------------------
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown('<div class="footer-keeggo">Ferramenta interna Keeggo. Nenhum dado é enviado à nuvem.</div>', unsafe_allow_html=True)
-st.markdown('<div class="credit-yasmin">Desenvolvido por Yasmin Araujo Santos Lopes - Cloud & DevOps</div>', unsafe_allow_html=True)
+st.markdown('<div class="credit-yasmin">Desenvolvido por Yasmin Lopes - Cloud & DevOps</div>', unsafe_allow_html=True)
