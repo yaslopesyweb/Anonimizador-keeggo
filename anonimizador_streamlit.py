@@ -621,7 +621,23 @@ if st.button("Anonimizar agora"):
     df = pd.DataFrame(mapping, columns=["tag", "original"])
     st.subheader("Mapeamento")
     st.dataframe(df)
-    st.download_button("Baixar texto anonimizado", anon_text.encode(), "anonimizado.txt")
+    # Gera o nome do arquivo anon
+    if uploaded and hasattr(uploaded, "name"):
+        original_name = uploaded.name
+    else:
+        original_name = f"transcricao_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+
+    # Remove extensão do arquivo original
+    base_name = os.path.splitext(original_name)[0]
+
+    # Novo nome: arquivo-anon.txt
+    anon_filename = f"{base_name}-anon.txt"
+
+    st.download_button(
+        "Baixar texto anonimizado",
+        anon_text.encode(),
+        file_name=anon_filename
+    )
     st.download_button("Baixar mapeamento", df.to_csv(index=False).encode(), "mapeamento.csv")
 
 # ---------------------------------------------------------
