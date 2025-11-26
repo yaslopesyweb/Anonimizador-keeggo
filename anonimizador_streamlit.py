@@ -504,12 +504,78 @@ col1, col2 = st.columns([2, 3])
 
 with col1:
     st.subheader("Selecione os nomes a anonimizar")
-    selected = st.multiselect(
+
+    # inicializa state
+    if "nomes_opcoes" not in st.session_state:
+        st.session_state["nomes_opcoes"] = list(unique_persons)
+
+    if "nomes_selecionados" not in st.session_state:
+        st.session_state["nomes_selecionados"] = list(unique_persons)
+
+    # ------------------------------
+    # CALLBACK SEGURO PARA ADIÇÃO
+    # ------------------------------
+    def adicionar_nome_callback():
+        novo_val = st.session_state["novo_nome_para_adicao"].strip()
+        if not novo_val:
+            return
+
+        # adiciona opções
+        if novo_val not in st.session_state["nomes_opcoes"]:
+            st.session_state["nomes_opcoes"].append(novo_val)
+
+        # adiciona à seleção atual
+        if novo_val not in st.session_state["nomes_selecionados"]:
+            st.session_state["nomes_selecionados"].append(novo_val)
+
+        # limpa o campo SEM ERRO (só funciona dentro do callback!)
+        st.session_state["novo_nome_para_adicao"] = ""
+
+    # multiselect principal
+    selecionados = st.multiselect(
         "",
-        options=unique_persons,
-        default=unique_persons,
+        options=st.session_state["nomes_opcoes"],
+        default=st.session_state["nomes_selecionados"],
+        key="multiselect_nomes",
         label_visibility="collapsed"
     )
+
+    st.session_state["nomes_selecionados"] = list(selecionados)
+
+    # CSS do input
+    st.markdown("""
+        <style>
+          .add-name-container input[type="text"] {
+              width: 100% !important;
+              height: 40px !important;
+              padding: 8px 12px !important;
+              background-color: #1A1A1A !important;
+              color: #e6e6e6 !important;
+              border: 1px solid rgba(255,255,255,0.06) !important;
+              border-radius: 8px !important;
+          }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(
+        "<div style='margin-top:1px;color:#bdbdbd;font-size:13px;'>"
+        "Digite um nome e pressione Enter para adicioná-lo"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    # campo de 1 linha + callback ao pressionar Enter
+    st.text_input(
+        "",
+        key="novo_nome_para_adicao",
+        placeholder="Adicionar nome e pressionar Enter",
+        label_visibility="collapsed",
+        on_change=adicionar_nome_callback
+    )
+
+    # valores finais para o fluxo
+    selected = st.session_state["nomes_selecionados"]
+    unique_persons = st.session_state["nomes_opcoes"]
 
 with col2:
     st.subheader("Amostra")
