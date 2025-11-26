@@ -503,10 +503,12 @@ st.header("2) Pessoas detectadas")
 col1, col2 = st.columns([2, 3])
 
 with col1:
+    st.subheader("Selecione os nomes a anonimizar")
     selected = st.multiselect(
-        "Selecione os nomes a anonimizar",
+        "",
         options=unique_persons,
-        default=unique_persons
+        default=unique_persons,
+        label_visibility="collapsed"
     )
 
 with col2:
